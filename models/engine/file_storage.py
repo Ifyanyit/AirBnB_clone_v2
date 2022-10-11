@@ -10,6 +10,14 @@ class FileStorage:
 
     def all(self):
         """Returns a dictionary of models currently in storage"""
+	 if cls:
+            all = dict()
+            for i in self.__objects.keys():
+                if i.split('.')[0] == cls.__name__:
+                    all[i] = self.__objects[i]
+            
+            return all
+
         return FileStorage.__objects
 
     def new(self, obj):
@@ -24,6 +32,7 @@ class FileStorage:
             for key, val in temp.items():
                 temp[key] = val.to_dict()
             json.dump(temp, f)
+	
 
     def reload(self):
         """Loads storage dictionary from file"""
@@ -48,3 +57,11 @@ class FileStorage:
                         self.all()[key] = classes[val['__class__']](**val)
         except FileNotFoundError:
             pass
+
+def delete(self, obj=None):
+        """delete obj from __objects if it’s inside
+        if obj is equal to None, the method should not do anything"""
+
+        if obj:
+            del(self.__objects["{}.{}".format(type(obj).__name__, obj.id)])
+            del(obj)
