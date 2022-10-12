@@ -2,6 +2,7 @@
 """ Console Module """
 import cmd
 import sys
+import shlex
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -73,7 +74,7 @@ class HBNBCommand(cmd.Cmd):
                 if pline:
                     # check for *args or **kwargs
                     if pline[0] == '{' and pline[-1] == '}'\
-                            and type(eval(pline)) == dict:
+                            and type(eval(pline)) is dict:
                         _args = pline
                     else:
                         _args = pline.replace(',', '')
@@ -114,51 +115,41 @@ class HBNBCommand(cmd.Cmd):
 
     def do_create(self, args):
         """ Create an object of any class"""
-        # Check if the argument is empty
+        arg2 = shlex.split(args)
         if not args:
             print("** class name missing **")
             return
-        # Split the argument into a list of arguments (on each space)
-        args_list = args.split()
-        class_name = args_list[0]
-
-        # We know that the first item of this argument list should be the class
-        # Check if the class exists
-        if class_name not in HBNBCommand.classes:
+        elif arg2[0] not in HBNBCommand.classes:
             print("** class doesn't exist **")
             return
+        new_instance = HBNBCommand.classes[arg2[0]]()
+        arg2 = arg2[1:]
+        for arg in arg2:
+            """
+            Iterates all arguments passed from the command line
+            E.g: arg2 = [city_id="0001", user_id="0001", number_rooms=4]
+                 arg = city_id="0001"
+            """
+            try:
+                new_list = list(arg.split('='))
 
-        # Create a new instance of the class
-        new_instance = HBNBCommand.classes[class_name]()
-
-        # contains the attribute to set to the class
-        # attribute and values are still separated by the `=` sign
-        attributes = args_list[1:]
-
-        # Go over all attributes and split keys and values from the `=` sign
-        for attribute in attributes:
-            key, value = attribute.split('=')
-            # Handle the formating (string, integer, float, underscore)
-            value = value.replace('_', ' ')
-
-            if value[0] == value[-1] == '"':
-                value = value[1:-1]
-            else:
-                # If value isn't in quotation marks
-                # it might be a numerical value
+            except Exception:
+                continue
+            key = new_list[0]
+            value = new_list[1]
+            try:
+                test = int(value)
+                if (len(str(test)) == len(value)):
+                    value = test
+            except Exception:
                 try:
-                    value = int(value)
-                except ValueError:
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        pass  # If all fail, then it's a string
-
-            setattr(new_instance, key, value)
-
-        storage.save()
+                    value = float(value)
+                except Exception:
+                    value = value.replace('_', ' ')
+            if hasattr(new_instance, key):
+                setattr(new_instance, key, value)
         print(new_instance.id)
-        storage.save()
+        new_instance.save()
 
     def help_create(self):
         """ Help information for the create method """
@@ -240,11 +231,11 @@ class HBNBCommand(cmd.Cmd):
             if args not in HBNBCommand.classes:
                 print("** class doesn't exist **")
                 return
-            for k, v in storage._FileStorage__objects.items():
+            for k, v in storage.all().items():
                 if k.split('.')[0] == args:
                     print_list.append(str(v))
         else:
-            for k, v in storage._FileStorage__objects.items():
+            for k, v in storage.all().items():
                 print_list.append(str(v))
 
         print(print_list)
@@ -292,13 +283,13 @@ class HBNBCommand(cmd.Cmd):
         # generate key from class and id
         key = c_name + "." + c_id
 
-        # determine if key == present
+        # determine if key is present
         if key not in storage.all():
             print("** no instance found **")
             return
 
         # first determine if kwargs or args
-        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) == dict:
+        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) is dict:
             kwargs = eval(args[2])
             args = []  # reformat kwargs into list, ex: [<name>, <value>, ...]
             for k, v in kwargs.items():
